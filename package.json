@@ -10,6 +10,14 @@
     "i18n"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/strapi-community/plugin-ab-test.git"
+  },
+  "homepage": "https://github.com/strapi-community/plugin-ab-test#readme",
+  "bugs": {
+    "url": "https://github.com/strapi-community/plugin-ab-test/issues"
+  },
   "author": "Maxime Castres <maxime.castres@protonmail.com>",
   "type": "commonjs",
   "exports": {
@@ -32,11 +40,18 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "build": "strapi-plugin build",
     "watch": "strapi-plugin watch",
     "watch:link": "strapi-plugin watch:link",
     "verify": "strapi-plugin verify",
+    "prepublishOnly": "npm run build && npm run verify && npm test",
     "test": "vitest run",
     "test:ts:front": "tsc -p admin/tsconfig.json",
     "test:ts:back": "tsc -p server/tsconfig.json",
