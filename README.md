@@ -1,6 +1,6 @@
 # A/B Testing for Strapi
 
-`@strapi-community/plugin-ab-test` lets editors keep several versions of an entry and split Content
+`@strapi/plugin-ab-test` lets editors keep several versions of an entry and split Content
 API traffic between them. It works with Internationalization (i18n) and Draft & Publish, on REST
 and GraphQL.
 
@@ -32,7 +32,7 @@ The plugin adds nothing to your content types: no attribute, no column, no `plug
 ## Installation
 
 ```bash
-npm install @strapi-community/plugin-ab-test
+npm install @strapi/plugin-ab-test
 npm run build
 ```
 
@@ -188,7 +188,7 @@ variants would appear as separate entries in your API. To uninstall cleanly:
 2. In **Settings → A/B Testing**, click **Prepare for uninstall** and choose whether to delete the
    variants or keep them as unpublished drafts. This removes every experiment and the settings.
    On content types without Draft & Publish, kept variants remain regular entries.
-3. Remove the package and rebuild: `npm uninstall @strapi-community/plugin-ab-test && npm run build`.
+3. Remove the package and rebuild: `npm uninstall @strapi/plugin-ab-test && npm run build`.
 
 On the next start Strapi drops the plugin's table. Nothing else is left behind.
 
