@@ -4,13 +4,16 @@ import { Box, Button, Flex, Typography } from '@strapi/design-system';
 import { createPortal } from 'react-dom';
 import { styled } from 'styled-components';
 
+import { getContentTypeInfo } from '../api';
 import type { Experiment } from '../types';
 import { variantName } from '../utils/labels';
 import { useT } from '../utils/useT';
 
-const Strip = styled(Flex)`
-  background: ${({ theme }) => theme.colors.primary100};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.primary200};
+type Tone = 'primary' | 'warning';
+
+const Strip = styled(Flex)<{ $tone: Tone }>`
+  background: ${({ theme, $tone }) => theme.colors[`${$tone}100`]};
+  border-bottom: 1px solid ${({ theme, $tone }) => theme.colors[`${$tone}200`]};
   padding: ${({ theme }) => `${theme.spaces[3]} ${theme.spaces[4]}`};
 
   /* Lines up with the title and form below, which the edit view indents on large screens. */
@@ -19,18 +22,34 @@ const Strip = styled(Flex)`
   }
 `;
 
-const Pill = styled(Box)`
+const Pill = styled(Box)<{ $tone: Tone }>`
   flex-shrink: 0;
   padding: ${({ theme }) => `${theme.spaces[1]} ${theme.spaces[2]}`};
   border-radius: ${({ theme }) => theme.borderRadius};
-  background: ${({ theme }) => theme.colors.primary600};
+  background: ${({ theme, $tone }) => theme.colors[`${$tone}600`]};
 `;
 
 const ROOT_ATTRIBUTE = 'data-ab-test-banner-root';
 
+/**
+ * Whether the open entry is held back from visitors: its content type has Draft & Publish and
+ * the entry has no published version. Like the status in the edit view header, a draft counts
+ * as published when the same locale has a published version.
+ */
+const isUnpublished = (
+  model: string,
+  entry?: Record<string, unknown>,
+  meta?: { availableStatus?: Array<{ publishedAt?: unknown }> }
+): boolean =>
+  getContentTypeInfo(model)?.draftAndPublish === true &&
+  entry?.status === 'draft' &&
+  !(meta?.availableStatus ?? []).some((version) => Boolean(version.publishedAt));
+
 interface VariantBannerProps {
   experiment: Experiment;
   variantKey: string;
+  /** See `isUnpublished`. */
+  isUnpublished: boolean;
   onOpenOriginal: () => void;
 }
 
@@ -42,7 +61,12 @@ interface VariantBannerProps {
  * through a portal into a node placed at the top of the edit view's `main` element. That node
  * is located from wherever this component is rendered inside the edit view, and removed with it.
  */
-const VariantBanner = ({ experiment, variantKey, onOpenOriginal }: VariantBannerProps) => {
+const VariantBanner = ({
+  experiment,
+  variantKey,
+  isUnpublished,
+  onOpenOriginal,
+}: VariantBannerProps) => {
   const t = useT();
   const anchor = React.useRef<HTMLSpanElement>(null);
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
@@ -69,6 +93,21 @@ const VariantBanner = ({ experiment, variantKey, onOpenOriginal }: VariantBanner
 
   const isWinner = experiment.winner === variantKey;
 
+  // Visitors only ever get published content, so this matters more than the experiment status,
+  // unless the experiment is over and would not serve the variant anyway.
+  const isHeldBack = isUnpublished && (experiment.status !== 'completed' || isWinner);
+  const tone: Tone = isHeldBack ? 'warning' : 'primary';
+
+  const unpublished = getContentTypeInfo(experiment.contentType)?.localized
+    ? t(
+        'banner.unpublished.locale',
+        'It is not published in this locale, so visitors keep seeing the original there. Publish it to have it served.'
+      )
+    : t(
+        'banner.unpublished',
+        'It is not published, so visitors keep seeing the original. Publish it to have it served.'
+      );
+
   // Say what the variant means for visitors right now, which depends on the experiment.
   const consequence = {
     draft: t(
@@ -90,17 +129,24 @@ const VariantBanner = ({ experiment, variantKey, onOpenOriginal }: VariantBanner
       <span ref={anchor} hidden />
       {container
         ? createPortal(
-            <Strip role="status" alignItems="center" gap={3} wrap="wrap" data-ab-test-banner>
-              <Pill>
+            <Strip
+              role="status"
+              alignItems="center"
+              gap={3}
+              wrap="wrap"
+              $tone={tone}
+              data-ab-test-banner
+            >
+              <Pill $tone={tone}>
                 <Typography variant="sigma" textColor="neutral0">
                   {variantName(variantKey)}
                 </Typography>
               </Pill>
-              <Typography textColor="primary700" style={{ flex: 1, minWidth: '16rem' }}>
-                <Typography fontWeight="bold" textColor="primary700">
+              <Typography textColor={`${tone}700`} style={{ flex: 1, minWidth: '16rem' }}>
+                <Typography fontWeight="bold" textColor={`${tone}700`}>
                   {t('banner.title', 'You are editing a variant of this entry.')}
                 </Typography>{' '}
-                {consequence}
+                {isHeldBack ? unpublished : consequence}
               </Typography>
               <Button variant="secondary" size="S" onClick={onOpenOriginal}>
                 {t('banner.open-original', 'Go to the original')}
@@ -113,4 +159,4 @@ const VariantBanner = ({ experiment, variantKey, onOpenOriginal }: VariantBanner
   );
 };
 
-export { VariantBanner };
+export { VariantBanner, isUnpublished };

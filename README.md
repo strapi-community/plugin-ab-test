@@ -47,11 +47,14 @@ Then, in the admin panel:
 
 1. Open an entry of an enabled content type. In the **A/B test** panel, click **Create a variant**
    and name the experiment. Every locale of the entry is copied into a new draft, and you land
-   on it. Leave that page without changing and saving anything and the copy is discarded again,
-   so a variant only exists once you have edited it.
-2. Edit the variant and **publish** it. Visitors only ever get published content.
+   on it. A copy with no saved change tests nothing: if you leave that page before saving one,
+   you are asked to confirm, and the copy is deleted, along with the experiment when it was its
+   only variant.
+2. Edit the variant and **publish** it. Saving is enough to keep a variant, but visitors only
+   ever get published content.
 3. Use the version picker at the top of the A/B test panel to switch between the original and its
-   variants. A banner across the top of the page tells you when you are on a variant.
+   variants. A banner across the top of the page tells you when you are on a variant, and warns
+   you while that variant is not published.
 4. Click **Experiment settings**. Everything else happens in that one window:
    - **Traffic split**: the share of visitors per variant; the original gets the remainder.
      **Add Variant C** creates another version. It is available once every existing variant has

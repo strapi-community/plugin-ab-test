@@ -9,11 +9,11 @@ import {
   SingleSelectOption,
   Typography,
 } from '@strapi/design-system';
-import { useRBAC } from '@strapi/strapi/admin';
+import { useForm, useRBAC } from '@strapi/strapi/admin';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { createGlobalStyle, styled } from 'styled-components';
 
-import { isEnabledType, useExperimentActions, useLookup } from '../api';
+import { isEnabledType, useExperimentActions, useLookup, useUnchangedVariants } from '../api';
 import { CreateExperimentModal } from '../components/CreateExperimentModal';
 import { ExperimentSettingsButton } from '../components/ExperimentSettingsButton';
 import { StatusBadge } from '../components/StatusBadge';
@@ -21,8 +21,8 @@ import { CONTROL_KEY, PERMISSIONS } from '../constants';
 import { editPath, splitSummary, variantName, versionTargets } from '../utils/labels';
 import { useT } from '../utils/useT';
 
-import { VariantBanner } from './VariantBanner';
-import { useDiscardUntouchedOnLeave } from './useDiscardUntouchedOnLeave';
+import { LeaveGuard } from './LeaveGuard';
+import { VariantBanner, isUnpublished } from './VariantBanner';
 
 import type { PanelComponent } from '@strapi/content-manager/strapi-admin';
 
@@ -91,9 +91,18 @@ interface PanelContentProps {
   model: string;
   documentId: string;
   suggestedName: string;
+  /** Changes when the open entry is saved. */
+  revision: string;
+  isUnpublished: boolean;
 }
 
-const PanelContent = ({ model, documentId, suggestedName }: PanelContentProps) => {
+const PanelContent = ({
+  model,
+  documentId,
+  suggestedName,
+  revision,
+  isUnpublished,
+}: PanelContentProps) => {
   const t = useT();
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -106,10 +115,12 @@ const PanelContent = ({ model, documentId, suggestedName }: PanelContentProps) =
   const canManage = allowedActions.canManage === true;
   const open = (target: string) => navigate(editPath(model, target, search));
 
-  useDiscardUntouchedOnLeave(
+  const hasUnsavedEdits =
+    useForm('ABTestPanel', (state) => state.modified || state.isSubmitting, false) === true;
+  const unchanged = useUnchangedVariants(
     data?.experiment.documentId ?? '',
-    data?.variantKey ?? '',
-    data?.role === 'variant' && canManage
+    data?.role === 'variant' && canManage,
+    revision
   );
 
   if (isLoading) {
@@ -177,8 +188,12 @@ const PanelContent = ({ model, documentId, suggestedName }: PanelContentProps) =
         <VariantBanner
           experiment={experiment}
           variantKey={variantKey}
+          isUnpublished={isUnpublished}
           onOpenOriginal={() => open(experiment.controlDocumentId)}
         />
+      ) : null}
+      {role === 'variant' && !hasUnsavedEdits && unchanged.data.includes(variantKey) ? (
+        <LeaveGuard experiment={experiment} variantKey={variantKey} />
       ) : null}
       <VersionPicker>
         <SingleSelect
@@ -217,7 +232,7 @@ const PanelContent = ({ model, documentId, suggestedName }: PanelContentProps) =
   );
 };
 
-const ABTestPanel: PanelComponent = ({ model, documentId, collectionType, document }) => {
+const ABTestPanel: PanelComponent = ({ model, documentId, collectionType, document, meta }) => {
   const t = useT();
 
   // Nothing to test until the entry exists, and only on content types enabled in the settings.
@@ -228,7 +243,13 @@ const ABTestPanel: PanelComponent = ({ model, documentId, collectionType, docume
   return {
     title: t('panel.title', 'A/B test'),
     content: (
-      <PanelContent model={model} documentId={documentId} suggestedName={suggestName(document)} />
+      <PanelContent
+        model={model}
+        documentId={documentId}
+        suggestedName={suggestName(document)}
+        revision={String(document?.updatedAt ?? '')}
+        isUnpublished={isUnpublished(model, document, meta)}
+      />
     ),
   };
 };

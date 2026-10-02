@@ -1,11 +1,6 @@
 import * as React from 'react';
 
-import {
-  getFetchClient,
-  useAPIErrorHandler,
-  useFetchClient,
-  useNotification,
-} from '@strapi/strapi/admin';
+import { useAPIErrorHandler, useFetchClient, useNotification } from '@strapi/strapi/admin';
 
 import { PLUGIN_ID } from './pluginId';
 import type {
@@ -184,14 +179,21 @@ export const useSummary = (contentType: string, documentId: string) => {
   return summaries.get(key)?.data ?? null;
 };
 
-/** Keys of the variants whose saved content still equals the original's. */
-export const useUnchangedVariants = (experimentDocumentId: string, enabled: boolean) => {
+/**
+ * Keys of the variants whose saved content still equals the original's. Pass a `revision` that
+ * changes when one of them is saved outside the plugin, such as the open entry's `updatedAt`.
+ */
+export const useUnchangedVariants = (
+  experimentDocumentId: string,
+  enabled: boolean,
+  revision = ''
+) => {
   const { get } = useFetchClient();
   const getRef = React.useRef(get);
   getRef.current = get;
 
   const storeVersion = useStoreVersion();
-  const key = `${experimentDocumentId}:${storeVersion}`;
+  const key = `${experimentDocumentId}:${storeVersion}:${revision}`;
   const [state, setState] = React.useState<{ key: string; data: string[] } | null>(null);
 
   React.useEffect(() => {
@@ -334,16 +336,28 @@ export const useExperimentActions = () => {
         run<Experiment>(() => client.current.post(`${BASE}/experiments/${documentId}/variants`)),
 
       /**
-       * Runs after the editor has left the variant's page. The component that asked for it is
-       * gone by then, and `useFetchClient` aborts a component's requests when it unmounts, so
-       * this one goes through a standalone client. Quiet on purpose.
+       * The two requests of the leave guard, made while a navigation is on hold. Quiet on
+       * purpose: a failure deletes nothing and must not keep the editor on the page. Neither
+       * refreshes the open views, which would unmount the guard before it lets the navigation
+       * through: the guard calls `invalidate` itself.
        */
+      findUnchangedVariants: async (documentId: string): Promise<string[]> => {
+        try {
+          const response = await client.current.get<{ data: string[] }>(
+            `${BASE}/experiments/${documentId}/unchanged-variants`
+          );
+
+          return response.data.data;
+        } catch {
+          return [];
+        }
+      },
+
       discardUnchangedVariant: async (documentId: string, key: string) => {
         try {
-          const response = await getFetchClient().post<{
+          const response = await client.current.post<{
             data: { discarded: boolean; experimentDeleted: boolean };
           }>(`${BASE}/experiments/${documentId}/variants/${key}/discard-unchanged`);
-          invalidate();
 
           return response.data.data;
         } catch {

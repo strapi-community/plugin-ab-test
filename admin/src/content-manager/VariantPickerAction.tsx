@@ -5,7 +5,7 @@ import { useLookup } from '../api';
 import { editPath, variantName, versionTargets } from '../utils/labels';
 import { useT } from '../utils/useT';
 
-import { VariantBanner } from './VariantBanner';
+import { VariantBanner, isUnpublished } from './VariantBanner';
 
 import type { HeaderActionComponent } from '@strapi/content-manager/strapi-admin';
 
@@ -14,7 +14,13 @@ import type { HeaderActionComponent } from '@strapi/content-manager/strapi-admin
  * view tucks that panel into a drawer, which would leave no sign of which version is open, so
  * there the picker and the variant banner are shown from the header instead.
  */
-const VariantPickerAction: HeaderActionComponent = ({ model, documentId, collectionType }) => {
+const VariantPickerAction: HeaderActionComponent = ({
+  model,
+  documentId,
+  collectionType,
+  document,
+  meta,
+}) => {
   const t = useT();
   const navigate = useNavigate();
   const { search } = useLocation();
@@ -39,6 +45,7 @@ const VariantPickerAction: HeaderActionComponent = ({ model, documentId, collect
           <VariantBanner
             experiment={experiment}
             variantKey={variantKey}
+            isUnpublished={isUnpublished(model, document, meta)}
             onOpenOriginal={() => navigate(editPath(model, experiment.controlDocumentId, search))}
           />
         ) : null}

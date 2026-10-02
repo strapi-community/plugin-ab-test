@@ -146,7 +146,7 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
       ctx.body = { data: updated };
     },
 
-    /** Called by the admin panel when an editor leaves a variant without having changed it. */
+    /** Called by the admin panel once an editor has agreed to leave a variant they never changed. */
     async discardUnchangedVariant(ctx: Context) {
       const current = await service().findOne(ctx.params.documentId);
 
