@@ -1,6 +1,6 @@
 {
   "name": "@strapi/plugin-ab-test",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A/B testing for Strapi 5: keep variants of an entry and split Content API traffic between them. Works with i18n and Draft & Publish.",
   "keywords": [
     "strapi",
