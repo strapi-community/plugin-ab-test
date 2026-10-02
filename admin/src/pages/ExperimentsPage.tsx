@@ -20,7 +20,7 @@ import { ExperimentSettingsButton } from '../components/ExperimentSettingsButton
 import { StatusBadge } from '../components/StatusBadge';
 import { CONTROL_KEY, PERMISSIONS } from '../constants';
 import type { Experiment } from '../types';
-import { editPath, splitSummary, variantName } from '../utils/labels';
+import { editPath, goalLabel, splitSummary, variantName } from '../utils/labels';
 import { timeLeft } from '../utils/time';
 import { useT } from '../utils/useT';
 
@@ -83,6 +83,13 @@ const ExperimentRow = ({
         </Typography>
       </Td>
       <Td>
+        {experiment.goal ? (
+          <Typography>{goalLabel(experiment.goal, t)}</Typography>
+        ) : (
+          <Typography textColor="neutral500">-</Typography>
+        )}
+      </Td>
+      <Td>
         <EndsIn experiment={experiment} />
       </Td>
       <Td>
@@ -128,7 +135,7 @@ const ExperimentsPage = () => {
               />
             </Box>
           ) : (
-            <Table colCount={6} rowCount={data.length + 1}>
+            <Table colCount={7} rowCount={data.length + 1}>
               <Thead>
                 <Tr>
                   <Th>
@@ -143,6 +150,11 @@ const ExperimentsPage = () => {
                   <Th>
                     <Typography variant="sigma">
                       {t('page.column.split', 'Traffic split')}
+                    </Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">
+                      {t('page.column.goal', 'Success metric')}
                     </Typography>
                   </Th>
                   <Th>

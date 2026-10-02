@@ -4,7 +4,7 @@ import type { Core, UID } from '@strapi/strapi';
 import { errors } from '@strapi/utils';
 
 import { CONTROL_KEY, EXPERIMENT_UID, VARIANT_KEYS } from '../constants';
-import type { DisposeMode, Experiment, Variant } from '../types';
+import type { DisposeMode, Experiment, Goal, Variant } from '../types';
 import {
   getContentType,
   getService,
@@ -12,6 +12,7 @@ import {
   isEligible,
   normalizeExperiment,
 } from '../utils';
+import { toGoal } from '../utils/goal';
 
 const { ValidationError, NotFoundError } = errors;
 
@@ -27,6 +28,7 @@ export interface CreateInput {
 export interface UpdateInput {
   name?: string;
   hypothesis?: string | null;
+  goal?: Goal | null;
   /** Variant key → share of traffic in percent. */
   weights?: Record<string, number>;
   startAt?: string | null;
@@ -298,6 +300,18 @@ const experiments = ({ strapi }: { strapi: Core.Strapi }) => {
 
       if (input.hypothesis !== undefined) {
         data.hypothesis = input.hypothesis;
+      }
+
+      if (input.goal !== undefined) {
+        const goal = toGoal(input.goal);
+
+        if (input.goal !== null && !goal) {
+          throw new ValidationError(
+            'The success metric must be page views, or a conversion with the name of its event.'
+          );
+        }
+
+        data.goal = goal;
       }
 
       if (input.weights !== undefined) {

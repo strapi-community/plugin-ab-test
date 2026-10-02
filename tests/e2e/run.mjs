@@ -359,6 +359,55 @@ const main = async () => {
     assert.equal(opened.data.title, 'Variant title');
   });
 
+  await check('a success metric can be set, changed and cleared', async () => {
+    const path = `/ab-test/experiments/${experiment.documentId}`;
+
+    const conversion = (
+      await admin('PUT', path, { goal: { type: 'conversion', event: ' form_submitted ' } })
+    ).data;
+    assert.deepEqual(conversion.goal, { type: 'conversion', event: 'form_submitted' });
+
+    for (const goal of [{ type: 'conversion' }, { type: 'revenue' }, 'pageviews']) {
+      const invalid = await request('PUT', path, { auth: true, body: { goal } });
+      assert.equal(invalid.status, 400);
+    }
+
+    // An update that does not mention the metric leaves it alone.
+    const untouched = (await admin('PUT', path, { hypothesis: 'A sharper headline' })).data;
+    assert.deepEqual(untouched.goal, conversion.goal);
+
+    const pageviews = (await admin('PUT', path, { goal: { type: 'pageviews' } })).data;
+    assert.deepEqual(pageviews.goal, { type: 'pageviews', event: null });
+
+    const cleared = (await admin('PUT', path, { goal: null })).data;
+    assert.equal(cleared.goal, null);
+  });
+
+  await check('results are optional and follow the PostHog connection', async () => {
+    const { posthog } = await admin('GET', '/ab-test/settings');
+    assert.equal(typeof posthog.connected, 'boolean');
+    assert.equal(posthog.connected, posthog.source !== null);
+
+    // A key that cannot run queries is named and refused before PostHog is asked anything.
+    if (posthog.source !== 'config') {
+      for (const personalApiKey of ['phc_project_token', 'phs_project_secret']) {
+        const refused = await request('PUT', '/ab-test/posthog', {
+          auth: true,
+          body: { host: 'https://us.posthog.com', projectId: '1', personalApiKey },
+        });
+        assert.equal(refused.status, 400);
+        assert.match(refused.text, /personal API key \(phx_…\)/);
+      }
+    }
+
+    // Not started yet: nothing is asked from PostHog, connected or not.
+    const results = (await admin('GET', `/ab-test/experiments/${experiment.documentId}/results`))
+      .data;
+    assert.equal(results.connected, posthog.connected);
+    assert.deepEqual(results.versions, []);
+    assert.equal(results.error, null);
+  });
+
   await check('an experiment can be scheduled, scoped and started', async () => {
     const updated = (
       await admin('PUT', `/ab-test/experiments/${experiment.documentId}`, {

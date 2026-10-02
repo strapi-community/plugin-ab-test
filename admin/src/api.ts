@@ -10,6 +10,9 @@ import type {
   ExperimentSummary,
   ExperimentUpdate,
   Lookup,
+  PosthogConnection,
+  PosthogInput,
+  Results,
 } from './types';
 
 const BASE = `/${PLUGIN_ID}`;
@@ -246,6 +249,68 @@ export const useExperiments = () => {
   return state;
 };
 
+/**
+ * What PostHog knows about each version of an experiment. `connected` is false when no PostHog
+ * project is configured, which is a normal way to run the plugin: nothing is shown then.
+ */
+export const useResults = (experimentDocumentId: string) => {
+  const { get } = useFetchClient();
+  const getRef = React.useRef(get);
+  getRef.current = get;
+
+  const [refreshes, refresh] = React.useReducer((count: number) => count + 1, 0);
+  const [state, setState] = React.useState<{ data: Results | null; isLoading: boolean }>({
+    data: null,
+    isLoading: true,
+  });
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    setState((current) => ({ ...current, isLoading: true }));
+
+    getRef
+      .current<{ data: Results }>(`${BASE}/experiments/${experimentDocumentId}/results`, {
+        // The server reuses an answer for a minute; asking again by hand skips that.
+        params: refreshes > 0 ? { refresh: true } : {},
+      })
+      .then((response) => !cancelled && setState({ data: response.data.data, isLoading: false }))
+      .catch(() => !cancelled && setState({ data: null, isLoading: false }));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [experimentDocumentId, refreshes]);
+
+  return { ...state, refresh };
+};
+
+/** Whether a PostHog project is configured, for the settings page. Null until known. */
+export const usePosthogConnection = () => {
+  const { get } = useFetchClient();
+  const getRef = React.useRef(get);
+  getRef.current = get;
+
+  // Connecting or disconnecting invalidates the store, which reads the connection again.
+  const storeVersion = useStoreVersion();
+  const [connection, setConnection] = React.useState<PosthogConnection | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    getRef
+      .current<{ posthog: PosthogConnection }>(`${BASE}/settings`)
+      .then((response) => !cancelled && setConnection(response.data.posthog))
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeVersion]);
+
+  return connection;
+};
+
 /** Locale codes and names, fetched only when a localized experiment is being edited. */
 export const useLocales = (enabled: boolean) => {
   const { get } = useFetchClient();
@@ -383,6 +448,12 @@ export const useExperimentActions = () => {
 
         return saved;
       },
+
+      /** PostHog checks the key before it is saved: a refusal comes back as the error. */
+      connectPosthog: (input: PosthogInput) =>
+        run<PosthogConnection>(() => client.current.put(`${BASE}/posthog`, input)),
+
+      disconnectPosthog: () => run<PosthogConnection>(() => client.current.del(`${BASE}/posthog`)),
 
       prepareUninstall: async (variants: DisposeMode) => {
         const summary = await run<{ experiments: number; variants: number }>(() =>

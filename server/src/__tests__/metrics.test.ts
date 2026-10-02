@@ -9,6 +9,7 @@ const experiment = (overrides: Partial<Experiment> = {}): Experiment => ({
   key: 'article-a1b2c3',
   name: 'Homepage headline',
   hypothesis: 'A shorter headline converts better',
+  goal: { type: 'conversion', event: 'signup_completed' },
   contentType: 'api::article.article',
   controlDocumentId: 'control',
   variants: [
@@ -20,6 +21,7 @@ const experiment = (overrides: Partial<Experiment> = {}): Experiment => ({
   endAt: null,
   locales: null,
   winner: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
   ...overrides,
 });
 
@@ -134,6 +136,7 @@ describe('metrics', () => {
       tested.key,
       tested.name,
       tested.hypothesis,
+      tested.goal?.event,
       tested.contentType,
       tested.controlDocumentId,
       'variant-b',

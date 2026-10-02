@@ -4,6 +4,8 @@ import { PLUGIN_ID } from '../constants';
 import type { Experiment, Variant } from '../types';
 import type { Services } from '../services';
 
+import { toGoal } from './goal';
+
 export const getService = <TName extends keyof Services>(
   strapi: Core.Strapi,
   name: TName
@@ -48,6 +50,7 @@ export const normalizeExperiment = (row: Record<string, unknown>): Experiment =>
   key: row.key as string,
   name: row.name as string,
   hypothesis: (row.hypothesis as string | null) ?? null,
+  goal: toGoal(row.goal),
   contentType: row.contentType as string,
   controlDocumentId: row.controlDocumentId as string,
   variants: toVariants(row.variants),
@@ -56,4 +59,5 @@ export const normalizeExperiment = (row: Record<string, unknown>): Experiment =>
   endAt: row.endAt ? new Date(row.endAt as string).toISOString() : null,
   locales: toLocales(row.locales),
   winner: (row.winner as string | null) ?? null,
+  createdAt: row.createdAt ? new Date(row.createdAt as string).toISOString() : null,
 });

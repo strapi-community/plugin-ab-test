@@ -1,8 +1,16 @@
 import { CONTROL_KEY, VARIANT_KEYS } from '../constants';
-import type { Experiment } from '../types';
+import type { Experiment, Goal } from '../types';
+
+import type { useT } from './useT';
 
 export const variantName = (key: string) =>
   key === CONTROL_KEY ? 'Original' : `Variant ${key.toUpperCase()}`;
+
+/** A success metric in one line, for the list of experiments and the choice of a winner. */
+export const goalLabel = (goal: Goal, t: ReturnType<typeof useT>) =>
+  goal.type === 'conversion'
+    ? t('goal.conversion', 'Conversion ({event})', { event: goal.event ?? '' })
+    : t('goal.pageviews', 'Page views');
 
 export const controlShare = (experiment: Pick<Experiment, 'variants'>) =>
   Math.max(0, 100 - experiment.variants.reduce((sum, variant) => sum + variant.weight, 0));

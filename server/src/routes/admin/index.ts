@@ -38,6 +38,12 @@ export default () => ({
       config: withPermission(ACTIONS.read),
     },
     {
+      method: 'GET',
+      path: '/experiments/:documentId/results',
+      handler: 'experiment.results',
+      config: withPermission(ACTIONS.read),
+    },
+    {
       method: 'POST',
       path: '/experiments',
       handler: 'experiment.create',
@@ -101,6 +107,18 @@ export default () => ({
       method: 'PUT',
       path: '/settings',
       handler: 'settings.update',
+      config: withPermission(ACTIONS.settings),
+    },
+    {
+      method: 'PUT',
+      path: '/posthog',
+      handler: 'settings.connectPosthog',
+      config: withPermission(ACTIONS.settings),
+    },
+    {
+      method: 'DELETE',
+      path: '/posthog',
+      handler: 'settings.disconnectPosthog',
       config: withPermission(ACTIONS.settings),
     },
     {

@@ -1,12 +1,13 @@
 import * as React from 'react';
 
-import { Box, Button, Checkbox, Flex, Typography } from '@strapi/design-system';
+import { Box, Button, Checkbox, Flex, Grid, Typography } from '@strapi/design-system';
 import { Check } from '@strapi/icons';
 import { Layouts, Page, useNotification } from '@strapi/strapi/admin';
 
-import { useContentTypes, useExperimentActions } from '../api';
+import { useContentTypes, useExperimentActions, usePosthogConnection } from '../api';
 import { DisposeDialog } from '../components/DisposeDialog';
 import { HowItWorks } from '../components/HowItWorks';
+import { PosthogResults } from '../components/PosthogResults';
 import { PERMISSIONS } from '../constants';
 import type { DisposeMode } from '../types';
 import { useT } from '../utils/useT';
@@ -15,6 +16,7 @@ const SettingsPage = () => {
   const t = useT();
   const contentTypes = useContentTypes();
   const actions = useExperimentActions();
+  const posthog = usePosthogConnection();
   const { toggleNotification } = useNotification();
 
   const saved = React.useMemo(
@@ -101,6 +103,25 @@ const SettingsPage = () => {
               )}
             </Flex>
           </Box>
+
+          <Flex direction="column" alignItems="stretch" gap={3}>
+            <Flex direction="column" alignItems="flex-start" gap={1}>
+              <Typography variant="delta" tag="h2">
+                {t('settings.integrations', 'Integrations')}
+              </Typography>
+              <Typography textColor="neutral600">
+                {t(
+                  'settings.integrations.hint',
+                  'Optional. A/B testing works without them: connect one to see the results of your experiments in Strapi.'
+                )}
+              </Typography>
+            </Flex>
+            <Grid.Root gap={4}>
+              <Grid.Item col={6} s={12} direction="column" alignItems="stretch">
+                <PosthogResults connection={posthog} />
+              </Grid.Item>
+            </Grid.Root>
+          </Flex>
 
           <Flex direction="column" alignItems="stretch" gap={3}>
             <Typography variant="delta" tag="h2">

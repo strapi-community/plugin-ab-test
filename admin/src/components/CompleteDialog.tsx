@@ -12,7 +12,7 @@ import {
 
 import { CONTROL_KEY } from '../constants';
 import type { Experiment } from '../types';
-import { variantName } from '../utils/labels';
+import { goalLabel, variantName } from '../utils/labels';
 import { useT } from '../utils/useT';
 
 interface CompleteDialogProps {
@@ -38,6 +38,13 @@ const CompleteDialog = ({ experiment, open, onClose, onConfirm }: CompleteDialog
                 'The winner is served to every visitor from now on. Choosing the original ends the test without changing what is served.'
               )}
             </Typography>
+            {experiment.goal ? (
+              <Typography fontWeight="bold">
+                {t('complete.goal', 'Success metric: {goal}', {
+                  goal: goalLabel(experiment.goal, t),
+                })}
+              </Typography>
+            ) : null}
             <Field.Root name="winner">
               <Field.Label>{t('complete.winner', 'Winner')}</Field.Label>
               <SingleSelect value={winner} onChange={(value) => setWinner(String(value))}>

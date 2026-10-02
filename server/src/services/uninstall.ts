@@ -6,7 +6,8 @@ import { getService } from '../utils';
 const uninstall = ({ strapi }: { strapi: Core.Strapi }) => ({
   /**
    * Leaves the application as if the plugin had never been used: every experiment is removed,
-   * its variants are deleted or turned into ordinary drafts, and the plugin settings are cleared.
+   * its variants are deleted or turned into ordinary drafts, and the plugin settings are cleared,
+   * the PostHog connection with them.
    * After this the package can be removed without variants surfacing as public entries.
    */
   async prepare(mode: DisposeMode) {
@@ -19,6 +20,8 @@ const uninstall = ({ strapi }: { strapi: Core.Strapi }) => ({
     }
 
     await getService(strapi, 'settings').clear();
+    // The PostHog key saved from the settings page must not outlive the plugin.
+    await getService(strapi, 'posthog').disconnect();
     await getService(strapi, 'registry').refresh();
 
     return { experiments: experiments.length, variants };

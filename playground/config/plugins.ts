@@ -28,6 +28,14 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   'ab-test': {
     enabled: true,
     resolve: './.ab-test',
+    config: {
+      // Optional: results from PostHog. Unset, the plugin is simply not connected.
+      posthog: {
+        host: env('POSTHOG_HOST'),
+        projectId: env('POSTHOG_PROJECT_ID'),
+        personalApiKey: env('POSTHOG_PERSONAL_API_KEY'),
+      },
+    },
   },
   'users-permissions': {
     config: {

@@ -490,6 +490,7 @@ export interface PluginAbTestExperiment extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> & Schema.Attribute.Private;
     endAt: Schema.Attribute.DateTime;
+    goal: Schema.Attribute.JSON;
     hypothesis: Schema.Attribute.Text;
     key: Schema.Attribute.String & Schema.Attribute.Required & Schema.Attribute.Unique;
     locale: Schema.Attribute.String & Schema.Attribute.Private;

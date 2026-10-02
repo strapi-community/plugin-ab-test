@@ -13,6 +13,8 @@ import {
   MultiSelect,
   MultiSelectOption,
   NumberInput,
+  SingleSelect,
+  SingleSelectOption,
   Textarea,
   TextInput,
   Typography,
@@ -20,14 +22,21 @@ import {
 import { Plus, Trash } from '@strapi/icons';
 import { useNotification } from '@strapi/strapi/admin';
 
-import { getContentTypeInfo, useExperimentActions, useLocales, useUnchangedVariants } from '../api';
+import {
+  getContentTypeInfo,
+  useExperimentActions,
+  useLocales,
+  useResults,
+  useUnchangedVariants,
+} from '../api';
 import { CONTROL_KEY } from '../constants';
-import type { DisposeMode, Experiment } from '../types';
+import type { DisposeMode, Experiment, Goal, GoalType } from '../types';
 import { nextVariantKey, variantName } from '../utils/labels';
 import { useT } from '../utils/useT';
 
 import { CompleteDialog } from './CompleteDialog';
 import { DisposeDialog } from './DisposeDialog';
+import { ExperimentResults } from './ExperimentResults';
 import { StatusBadge } from './StatusBadge';
 
 interface ExperimentModalProps {
@@ -66,6 +75,8 @@ const ExperimentModal = ({
 
   const [name, setName] = React.useState(experiment.name);
   const [hypothesis, setHypothesis] = React.useState(experiment.hypothesis ?? '');
+  const [goalType, setGoalType] = React.useState<GoalType | ''>(experiment.goal?.type ?? '');
+  const [goalEvent, setGoalEvent] = React.useState(experiment.goal?.event ?? '');
   const [startAt, setStartAt] = React.useState(toDate(experiment.startAt));
   const [endAt, setEndAt] = React.useState(toDate(experiment.endAt));
   const [locales, setLocales] = React.useState(experiment.locales ?? []);
@@ -78,11 +89,21 @@ const ExperimentModal = ({
   const total = experiment.variants.reduce((sum, variant) => sum + (weights[variant.key] ?? 0), 0);
   const isOverAllocated = total > 100;
   const hasInvalidSchedule = Boolean(startAt && endAt && endAt <= startAt);
-  const isInvalid = name.trim() === '' || isOverAllocated || hasInvalidSchedule;
+
+  const goal: Goal | null =
+    goalType === ''
+      ? null
+      : { type: goalType, event: goalType === 'conversion' ? goalEvent.trim() : null };
+  // A conversion is only defined once it says which event counts as one.
+  const isGoalIncomplete = goal?.type === 'conversion' && goal.event === '';
+
+  const isInvalid = name.trim() === '' || isOverAllocated || hasInvalidSchedule || isGoalIncomplete;
 
   const isDirty =
     name !== experiment.name ||
     hypothesis !== (experiment.hypothesis ?? '') ||
+    goal?.type !== experiment.goal?.type ||
+    (goal?.event ?? null) !== (experiment.goal?.event ?? null) ||
     !sameTime(startAt, experiment.startAt) ||
     !sameTime(endAt, experiment.endAt) ||
     locales.join() !== (experiment.locales ?? []).join() ||
@@ -97,6 +118,8 @@ const ExperimentModal = ({
   const unchanged = useUnchangedVariants(experiment.documentId, canStart);
   const unchangedVariant = unchanged.data[0];
   const blocksStart = unchanged.data.some((key) => (weights[key] ?? 0) > 0);
+
+  const results = useResults(experiment.documentId);
 
   const withBusy = async <T,>(label: string, action: () => Promise<T>): Promise<T> => {
     setBusy(label);
@@ -114,6 +137,7 @@ const ExperimentModal = ({
     actions.update(experiment.documentId, {
       name,
       hypothesis: hypothesis || null,
+      goal,
       weights,
       startAt: startAt ? startAt.toISOString() : null,
       endAt: endAt ? endAt.toISOString() : null,
@@ -258,6 +282,13 @@ const ExperimentModal = ({
               </Flex>
             </Box>
 
+            <ExperimentResults
+              experiment={experiment}
+              results={results.data}
+              isLoading={results.isLoading}
+              onRefresh={results.refresh}
+            />
+
             <Flex direction="column" alignItems="stretch" gap={4}>
               <Field.Root name="name" required>
                 <Field.Label>{t('modal.name', 'Name')}</Field.Label>
@@ -283,6 +314,59 @@ const ExperimentModal = ({
                 />
                 <Field.Hint />
               </Field.Root>
+              <Field.Root
+                name="goal"
+                hint={
+                  results.data?.connected
+                    ? t(
+                        'modal.goal.hint.connected',
+                        'What decides the winner. Its results are read from PostHog and shown above.'
+                      )
+                    : t(
+                        'modal.goal.hint',
+                        'What decides the winner. The plugin records it; you read the results in your analytics tool, or here once PostHog is connected. Settings → A/B Testing explains both.'
+                      )
+                }
+              >
+                <Field.Label>{t('modal.goal', 'Success metric')}</Field.Label>
+                <SingleSelect
+                  value={goalType}
+                  disabled={!canManage}
+                  placeholder={t('modal.goal.none', 'Not defined')}
+                  onChange={(value) => setGoalType(value as GoalType)}
+                  onClear={() => setGoalType('')}
+                >
+                  <SingleSelectOption value="conversion">
+                    {t('modal.goal.conversion', 'Conversion: visitors who complete an action')}
+                  </SingleSelectOption>
+                  <SingleSelectOption value="pageviews">
+                    {t('modal.goal.pageviews', 'Page views: pages viewed per visitor')}
+                  </SingleSelectOption>
+                </SingleSelect>
+                <Field.Hint />
+              </Field.Root>
+              {goalType === 'conversion' ? (
+                <Field.Root
+                  name="goalEvent"
+                  required
+                  hint={t(
+                    'modal.goal.event.hint',
+                    'The event your frontend sends to your analytics tool when a visitor completes the action.'
+                  )}
+                >
+                  <Field.Label>{t('modal.goal.event', 'Conversion event')}</Field.Label>
+                  <TextInput
+                    value={goalEvent}
+                    disabled={!canManage}
+                    maxLength={120}
+                    placeholder={t('modal.goal.event.placeholder', 'e.g. form_submitted')}
+                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                      setGoalEvent(event.target.value)
+                    }
+                  />
+                  <Field.Hint />
+                </Field.Root>
+              ) : null}
             </Flex>
 
             <Flex direction="column" alignItems="stretch" gap={3}>

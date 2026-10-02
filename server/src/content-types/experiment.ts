@@ -18,6 +18,7 @@ export default {
       key: { type: 'string', required: true, unique: true },
       name: { type: 'string', required: true },
       hypothesis: { type: 'text' },
+      goal: { type: 'json' },
       contentType: { type: 'string', required: true },
       controlDocumentId: { type: 'string', required: true },
       variants: { type: 'json' },

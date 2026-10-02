@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { Accordion, Box, Flex, Typography } from '@strapi/design-system';
-import { Code, Earth, Feather } from '@strapi/icons';
+import { Code, Earth, Feather, PresentationChart } from '@strapi/icons';
 import { styled } from 'styled-components';
 
 import { useRichT, useT } from '../utils/useT';
@@ -37,6 +37,29 @@ const { data } = await res.json();
 // Tell your analytics tool which version this visitor saw.
 // data[0].abTest → { experiment: 'contact-headline', variant: 'b' }   ('control' = original)`;
 
+const MEASURE_EXAMPLE = `// PostHog here; any analytics tool works the same way.
+
+// 1. Read the content: Strapi only sees the seed.
+const res = await fetch(\`\${STRAPI_URL}/api/pages?filters[slug][$eq]=contact&abSeed=\${seed}\`);
+const { data } = await res.json();
+// data[0].abTest → { experiment: 'contact-headline', variant: 'b' }
+
+// 2. Exposure, in the browser, once the entry is displayed.
+const { abTest } = data[0];
+
+if (abTest && !abTest.fallback) {
+  posthog.capture('ab_test_exposure', {
+    experiment: abTest.experiment,
+    variant: abTest.variant,
+  });
+}
+
+// 3. Conversion, when the form is sent: the event named in the success metric.
+posthog.capture('form_submitted');
+
+// 4. In PostHog: a funnel ab_test_exposure → form_submitted, broken down by "variant".
+//    With PostHog connected to the plugin, Experiment settings shows the same comparison.`;
+
 /** A short paragraph with a bold lead-in. */
 const Point = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <Typography>
@@ -54,7 +77,8 @@ const Section = ({ children }: { children: React.ReactNode }) => (
 
 /**
  * What an editor or developer needs to know before relying on the plugin: how the frontend
- * asks for variants, and how variants relate to Draft & Publish and to locales.
+ * asks for variants, how results are measured, and how variants relate to Draft & Publish and
+ * to locales.
  */
 const HowItWorks = () => {
   const t = useT();
@@ -98,6 +122,62 @@ const HowItWorks = () => {
               )}
             </Point>
             <Snippet>{EXAMPLE}</Snippet>
+          </Section>
+        </Accordion.Content>
+      </Accordion.Item>
+
+      <Accordion.Item value="measure">
+        <Accordion.Header>
+          <Accordion.Trigger
+            icon={PresentationChart}
+            description={t(
+              'guide.measure.description',
+              'The plugin serves versions but counts nothing: your frontend reports to your analytics tool, and versions are compared there.'
+            )}
+          >
+            {t('guide.measure.title', 'How to measure which version wins')}
+          </Accordion.Trigger>
+        </Accordion.Header>
+        <Accordion.Content>
+          <Section>
+            <Point title={t('guide.measure.strapi.title', 'Strapi only receives the seed.')}>
+              {t(
+                'guide.measure.strapi',
+                'It picks a version and labels it. It receives no event and counts no visitor: results are measured by your analytics tool (PostHog, GA4, Plausible…). With PostHog connected, which is optional, the plugin fetches them from there and shows them in Experiment settings.'
+              )}
+            </Point>
+            <Point title={t('guide.measure.goal.title', 'Set a success metric.')}>
+              {t(
+                'guide.measure.goal',
+                'In Experiment settings, before starting: a conversion, with the name of the event that counts as one, or page views. It is what your team agrees to judge the test on, shown in the list of experiments and when picking a winner.'
+              )}
+            </Point>
+            <Point title={t('guide.measure.exposure.title', 'Report the exposure.')}>
+              {rich(
+                'guide.measure.exposure',
+                'When a tested entry is displayed, send an event to your analytics tool with the experiment key and the version from {param}. Send it from the browser, so crawlers are not counted, and skip entries labelled {fallback}. For results to show up in Strapi, name it {event} with the properties {experiment} and {variant}, as in the example.',
+                {
+                  param: <Param>abTest</Param>,
+                  fallback: <Param>fallback: true</Param>,
+                  event: <Param>ab_test_exposure</Param>,
+                  experiment: <Param>experiment</Param>,
+                  variant: <Param>variant</Param>,
+                }
+              )}
+            </Point>
+            <Point title={t('guide.measure.conversion.title', 'Report the conversion.')}>
+              {t(
+                'guide.measure.conversion',
+                'When the visitor completes the action, send the event named in the success metric. It does not need to carry the version: the analytics tool links both events through the visitor. Keep the name you typed and the name your frontend sends identical: a different name counts no conversion.'
+              )}
+            </Point>
+            <Point title={t('guide.measure.compare.title', 'Compare the versions.')}>
+              {t(
+                'guide.measure.compare',
+                'Among the visitors exposed to each version, count those who then sent the conversion event: a funnel from the exposure to the conversion, broken down by version. For page views, compare the pages viewed per exposed visitor instead. With PostHog connected, Experiment settings shows this comparison for you.'
+              )}
+            </Point>
+            <Snippet>{MEASURE_EXAMPLE}</Snippet>
           </Section>
         </Accordion.Content>
       </Accordion.Item>
@@ -185,4 +265,4 @@ const HowItWorks = () => {
   );
 };
 
-export { HowItWorks };
+export { HowItWorks, MEASURE_EXAMPLE, Param, Point, Snippet };

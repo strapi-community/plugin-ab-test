@@ -10,12 +10,22 @@ export interface Variant {
   weight: number;
 }
 
+export type GoalType = 'conversion' | 'pageviews';
+
+/** The success metric of an experiment: what its versions are compared on. */
+export interface Goal {
+  type: GoalType;
+  /** The event the frontend reports for a conversion. Null for page views. */
+  event: string | null;
+}
+
 export interface Experiment {
   id: number;
   documentId: string;
   key: string;
   name: string;
   hypothesis: string | null;
+  goal: Goal | null;
   contentType: string;
   controlDocumentId: string;
   variants: Variant[];
@@ -24,6 +34,43 @@ export interface Experiment {
   endAt: string | null;
   locales: string[] | null;
   winner: string | null;
+  createdAt: string | null;
+}
+
+/** Where results are read from, without the API key. */
+export interface PosthogConnection {
+  connected: boolean;
+  host: string | null;
+  projectId: string | null;
+  /** `config` for the plugin config file, which wins; `settings` for the settings page. */
+  source: 'config' | 'settings' | null;
+  /** The ends of the key, to recognise it. */
+  keyHint: string | null;
+}
+
+export interface VersionResult {
+  /** `control` or a variant key. */
+  key: string;
+  /** Visitors who reported an exposure to this version. */
+  visitors: number;
+  /** Visitors who converted after their exposure, or page views after it. */
+  count: number;
+  /** Conversion rate from 0 to 1, or page views per visitor. Null without visitors. */
+  value: number | null;
+  /** Relative difference with the original. Null for the original, or when it has no value. */
+  uplift: number | null;
+  /** 1 - p-value against the original. Null while the samples are too small to tell. */
+  significance: number | null;
+}
+
+/** What the admin panel shows for an experiment. Results are optional: see `connected`. */
+export interface Results {
+  connected: boolean;
+  goal: Goal | null;
+  versions: VersionResult[];
+  fetchedAt: string | null;
+  /** Why PostHog could not be read, in words an administrator can act on. */
+  error: string | null;
 }
 
 export interface Settings {

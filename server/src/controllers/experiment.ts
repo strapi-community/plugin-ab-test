@@ -74,6 +74,15 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
       };
     },
 
+    /** What PostHog knows about each version. Empty, not an error, when it is not connected. */
+    async results(ctx: Context) {
+      ctx.body = {
+        data: await getService(strapi, 'results').get(ctx.params.documentId, {
+          refresh: ctx.query.refresh === 'true',
+        }),
+      };
+    },
+
     async create(ctx: Context) {
       const { contentType, controlDocumentId, name, hypothesis } = ctx.request.body ?? {};
 
@@ -88,12 +97,13 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
     },
 
     async update(ctx: Context) {
-      const { name, hypothesis, weights, startAt, endAt, locales } = ctx.request.body ?? {};
+      const { name, hypothesis, goal, weights, startAt, endAt, locales } = ctx.request.body ?? {};
 
       ctx.body = {
         data: await service().update(ctx.params.documentId, {
           name,
           hypothesis,
+          goal,
           weights,
           startAt,
           endAt,

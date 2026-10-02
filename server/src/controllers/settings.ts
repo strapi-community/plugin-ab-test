@@ -12,6 +12,7 @@ const settings = ({ strapi }: { strapi: Core.Strapi }) => {
       ctx.body = {
         data: await service().get(),
         contentTypes: service().eligibleContentTypes(),
+        posthog: await getService(strapi, 'posthog').connection(),
       };
     },
 
@@ -37,6 +38,19 @@ const settings = ({ strapi }: { strapi: Core.Strapi }) => {
 
       getService(strapi, 'metrics').sendDidUpdateSettings(updated.contentTypes.length);
       ctx.body = { data: updated };
+    },
+
+    /** Checks a PostHog project and key against PostHog, then keeps them for reading results. */
+    async connectPosthog(ctx: Context) {
+      const { host, projectId, personalApiKey } = ctx.request.body ?? {};
+
+      ctx.body = {
+        data: await getService(strapi, 'posthog').connect({ host, projectId, personalApiKey }),
+      };
+    },
+
+    async disconnectPosthog(ctx: Context) {
+      ctx.body = { data: await getService(strapi, 'posthog').disconnect() };
     },
 
     /** Removes everything the plugin created so the package can be uninstalled cleanly. */

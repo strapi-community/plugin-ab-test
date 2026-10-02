@@ -59,6 +59,10 @@ Then, in the admin panel:
    - **Traffic split**: the share of visitors per variant; the original gets the remainder.
      **Add Variant C** creates another version. It is available once every existing variant has
      been changed and saved, so untouched copies of the original cannot pile up.
+   - **Success metric**: what decides the winner, either a conversion (with the name of the event
+     your frontend reports when a visitor completes the action) or page views. It is shown in the
+     list of experiments and when you pick a winner. The plugin records it but does not measure
+     it: see [Measuring results](#measuring-results).
    - **Schedule** and **Locales**: optional start and end dates, and where the test runs.
    - **Start experiment**, then **Pause** or **Resume**. Starting is refused while a variant that
      gets traffic is still identical to the original, or while no variant is published.
@@ -144,8 +148,105 @@ independent sides of different experiments.
 
 ## Measuring results
 
-The plugin serves and labels variants. It does not track conversions: use the `abTest` label with
-your analytics tool (GA4, PostHog, Plausible…) to compare versions.
+The plugin serves and labels variants. It receives no event and counts no visitor: results are
+measured by your analytics tool (GA4, PostHog, Plausible…). Strapi only ever receives the seed.
+With PostHog, the plugin can also fetch the results and show them in the admin panel: see
+[Results from PostHog](#results-from-posthog-optional), which is optional.
+
+1. **Set a success metric** in the experiment settings before starting: a conversion, with the
+   name of the event that counts as one, or page views.
+2. **Report the exposure.** When a tested entry is displayed, send an event to your analytics tool
+   with the experiment key and the version from `abTest`. Send it from the browser, so crawlers are
+   not counted, and skip entries labelled `fallback: true`.
+3. **Report the conversion.** When the visitor completes the action, send the event named in the
+   success metric. It does not need to carry the version: the analytics tool links both events
+   through the visitor.
+4. **Compare in your analytics tool.** Among the visitors exposed to each version, count those who
+   then sent the conversion event: a funnel from the exposure to the conversion, broken down by
+   version. For page views, compare the pages viewed per exposed visitor instead.
+
+```ts
+// PostHog here; any analytics tool works the same way.
+
+// 1. Read the content: Strapi only sees the seed.
+const res = await fetch(`${STRAPI_URL}/api/articles/${id}?abSeed=${bucket}`);
+const { data } = await res.json();
+// data.abTest → { experiment: 'article-3f9a1c', variant: 'b' }
+
+// 2. Exposure, in the browser, once the entry is displayed.
+if (data.abTest && !data.abTest.fallback) {
+  posthog.capture('ab_test_exposure', {
+    experiment: data.abTest.experiment,
+    variant: data.abTest.variant,
+  });
+}
+
+// 3. Conversion, when the form is sent: the event named in the success metric.
+posthog.capture('form_submitted');
+
+// 4. In PostHog: a funnel ab_test_exposure → form_submitted, broken down by "variant".
+```
+
+Keep the event name typed in the experiment settings and the one your frontend sends identical:
+a different name counts no conversion.
+
+### Results from PostHog (optional)
+
+A/B testing works without this. If you use PostHog, the plugin can read the results of each
+experiment from it and show them in the experiment settings: visitors, conversions (or page
+views), difference with the original and significance, for the success metric of the experiment.
+
+To connect a project, open **Settings → A/B Testing**, click the **PostHog** card and paste:
+
+- the **region** of your PostHog (US Cloud, EU Cloud, or the address of a self-hosted one);
+- the **project ID**: the number in the address of your project, `us.posthog.com/project/12345`;
+- a **personal API key** (`phx_…`) with the **Query Read** scope, created in PostHog under
+  Settings → Personal API keys. The project token your frontend uses (`phc_…`) and project secret
+  keys (`phs_…`) cannot run queries, and are refused.
+
+The key is checked with PostHog when you connect, so a key that cannot read results is refused
+right away. It is then stored encrypted with Strapi's encryption key
+(`admin.secrets.encryptionKey`), and never sent back to the admin panel: only its first and last
+characters are shown. Connecting requires the plugin's `Change settings` permission.
+
+To keep the key in environment variables instead, set the connection in the plugin config. It
+takes precedence over the settings page, which then shows it read-only:
+
+```ts
+// config/plugins.ts
+export default ({ env }) => ({
+  'ab-test': {
+    config: {
+      posthog: {
+        host: 'https://us.posthog.com', // or https://eu.posthog.com
+        projectId: env('POSTHOG_PROJECT_ID'),
+        personalApiKey: env('POSTHOG_PERSONAL_API_KEY'),
+      },
+    },
+  },
+});
+```
+
+Results only show up if your frontend follows this convention exactly, which is the one of the
+example above:
+
+- **One exposure event** named `ab_test_exposure`, sent when a tested entry is displayed, with two
+  properties taken from the `abTest` label: `experiment` and `variant`. Under any other name, or
+  without these properties, the visitor is not counted.
+- **The event of the success metric.** A conversion is counted when PostHog receives an event with
+  exactly the name typed in the success metric. Page views are counted from PostHog's `$pageview`
+  events.
+- **The same visitor for both.** PostHog links the exposure and what follows through the visitor,
+  so send both with the same PostHog client.
+
+A visitor counts once, for the first version seen, and only for what happened after seeing it.
+Significance is a two-sided test against the original (two proportions for a conversion, Welch for
+page views); it is shown once each version has at least 30 visitors, and a difference is treated
+as reliable from 95%.
+
+Results are read when an experiment is opened in the admin panel, and reused for a minute. Nothing
+is asked from PostHog on the Content API path, and nothing before an experiment has started or
+while it has no success metric.
 
 ## Performance
 
@@ -180,7 +281,7 @@ leave the list.
 
 ## Uninstalling
 
-The plugin stores everything it owns in its own table and one settings key. Your content tables
+The plugin stores everything it owns in its own table and its settings keys. Your content tables
 and schema files are never modified, so removing the package cannot break the application.
 
 Variants, however, are real entries. Once the plugin is gone nothing hides them, and published
@@ -189,7 +290,7 @@ variants would appear as separate entries in your API. To uninstall cleanly:
 1. Remove `abSeed` and `abVariant` from your frontend requests. With `api.rest.strictParams`
    enabled, Strapi rejects unknown query params once the plugin no longer declares them.
 2. In **Settings → A/B Testing**, click **Prepare for uninstall** and choose whether to delete the
-   variants or keep them as unpublished drafts. This removes every experiment and the settings.
+   variants or keep them as unpublished drafts. This removes every experiment and the settings, the PostHog connection included.
    On content types without Draft & Publish, kept variants remain regular entries.
 3. Remove the package and rebuild: `npm uninstall @strapi/plugin-ab-test && npm run build`.
 
@@ -199,14 +300,20 @@ On the next start Strapi drops the plugin's table. Nothing else is left behind.
 
 ```ts
 // config/plugins.ts
-export default {
+export default ({ env }) => ({
   'ab-test': {
     config: {
       // How long an instance serves from memory before re-reading experiments, in ms.
       cacheTtl: 30000,
+      // Optional: see "Results from PostHog".
+      posthog: {
+        host: 'https://us.posthog.com',
+        projectId: env('POSTHOG_PROJECT_ID'),
+        personalApiKey: env('POSTHOG_PERSONAL_API_KEY'),
+      },
     },
   },
-};
+});
 ```
 
 ## Telemetry
