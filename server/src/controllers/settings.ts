@@ -33,14 +33,20 @@ const settings = ({ strapi }: { strapi: Core.Strapi }) => {
         throw new errors.ValidationError('contentTypes must be a list of content type uids.');
       }
 
-      ctx.body = { data: await service().set({ contentTypes }) };
+      const updated = await service().set({ contentTypes });
+
+      getService(strapi, 'metrics').sendDidUpdateSettings(updated.contentTypes.length);
+      ctx.body = { data: updated };
     },
 
     /** Removes everything the plugin created so the package can be uninstalled cleanly. */
     async prepareUninstall(ctx: Context) {
       const mode = ctx.request.body?.variants === 'keep' ? 'keep' : 'delete';
 
-      ctx.body = { data: await getService(strapi, 'uninstall').prepare(mode) };
+      const removed = await getService(strapi, 'uninstall').prepare(mode);
+
+      getService(strapi, 'metrics').sendDidPrepareUninstall(mode, removed);
+      ctx.body = { data: removed };
     },
   };
 };

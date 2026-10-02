@@ -32,6 +32,8 @@ const bootstrap = async ({ strapi }: { strapi: Core.Strapi }) => {
   await getService(strapi, 'registry').refresh();
 
   setUnsubscribe(strapi.documents.use(createDocumentMiddleware({ strapi })));
+
+  await getService(strapi, 'metrics').sendDidInitializeEvent();
 };
 
 export default bootstrap;

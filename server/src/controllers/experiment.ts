@@ -36,6 +36,7 @@ const canRead = (ctx: Context, contentType: string) =>
 
 const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
   const service = () => getService(strapi, 'experiments');
+  const metrics = () => getService(strapi, 'metrics');
 
   return {
     async find(ctx: Context) {
@@ -80,9 +81,10 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
       requireString(controlDocumentId, 'controlDocumentId');
       assertCan(ctx, CM_ACTIONS.create, contentType);
 
-      ctx.body = {
-        data: await service().create({ contentType, controlDocumentId, name, hypothesis }),
-      };
+      const created = await service().create({ contentType, controlDocumentId, name, hypothesis });
+
+      metrics().sendDidCreateExperiment();
+      ctx.body = { data: created };
     },
 
     async update(ctx: Context) {
@@ -107,11 +109,12 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
         throw new ValidationError(`Unknown action: ${action}`);
       }
 
-      ctx.body = {
-        data: await service().setStatus(ctx.params.documentId, action as StatusAction, {
-          winner: ctx.request.body?.winner,
-        }),
-      };
+      const updated = await service().setStatus(ctx.params.documentId, action as StatusAction, {
+        winner: ctx.request.body?.winner,
+      });
+
+      metrics().sendDidSetStatus(action as StatusAction, updated);
+      ctx.body = { data: updated };
     },
 
     async delete(ctx: Context) {
@@ -123,6 +126,7 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
       }
 
       await service().remove(ctx.params.documentId, mode);
+      metrics().sendDidDeleteExperiment(mode);
       ctx.body = { data: { documentId: ctx.params.documentId } };
     },
 
@@ -136,7 +140,10 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
 
       assertCan(ctx, CM_ACTIONS.create, current.contentType);
 
-      ctx.body = { data: await service().addVariant(ctx.params.documentId) };
+      const updated = await service().addVariant(ctx.params.documentId);
+
+      metrics().sendDidAddVariant(updated);
+      ctx.body = { data: updated };
     },
 
     /** Called by the admin panel when an editor leaves a variant without having changed it. */
@@ -145,9 +152,13 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
 
       assertCan(ctx, CM_ACTIONS.delete, current.contentType);
 
-      ctx.body = {
-        data: await service().discardUnchangedVariant(ctx.params.documentId, ctx.params.key),
-      };
+      const result = await service().discardUnchangedVariant(ctx.params.documentId, ctx.params.key);
+
+      if (result.discarded) {
+        metrics().sendDidDiscardVariant(result.experimentDeleted);
+      }
+
+      ctx.body = { data: result };
     },
 
     async removeVariant(ctx: Context) {
@@ -158,9 +169,10 @@ const experiment = ({ strapi }: { strapi: Core.Strapi }) => {
         assertCan(ctx, CM_ACTIONS.delete, current.contentType);
       }
 
-      ctx.body = {
-        data: await service().removeVariant(ctx.params.documentId, ctx.params.key, mode),
-      };
+      const updated = await service().removeVariant(ctx.params.documentId, ctx.params.key, mode);
+
+      metrics().sendDidRemoveVariant(mode);
+      ctx.body = { data: updated };
     },
   };
 };

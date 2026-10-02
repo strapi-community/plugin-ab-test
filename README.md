@@ -206,6 +206,31 @@ export default {
 };
 ```
 
+## Telemetry
+
+The plugin reports anonymous usage through
+[Strapi's own telemetry](https://docs.strapi.io/cms/usage-information), so it follows the
+project's setting: with `STRAPI_TELEMETRY_DISABLED=true`, or `telemetryDisabled` in the `strapi`
+key of `package.json`, nothing is sent.
+
+| Event                         | Sent when                                              | Properties                                                                            |
+| ----------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `didInitializeABTest`         | Strapi starts                                          | Number of enabled content types, of experiments, and of running experiments           |
+| `didUpdateABTestSettings`     | The settings are saved                                 | Number of enabled content types                                                       |
+| `didCreateABTestExperiment`   | An experiment is created                               | None                                                                                  |
+| `didStartABTestExperiment`    | An experiment is started or resumed                    | Number of variants, whether it has a schedule, whether it is limited to some locales  |
+| `didPauseABTestExperiment`    | An experiment is paused                                | Number of variants                                                                    |
+| `didCompleteABTestExperiment` | An experiment is completed                             | Number of variants, whether the original or a variant won                             |
+| `didAddABTestVariant`         | A variant is added to an experiment                    | Number of variants                                                                    |
+| `didRemoveABTestVariant`      | A variant is removed                                   | Whether the variant was deleted or kept                                               |
+| `didDiscardABTestVariant`     | An untouched variant is dropped when its editor leaves | Whether the experiment went with it                                                   |
+| `didDeleteABTestExperiment`   | An experiment is deleted                               | Whether its variants were deleted or kept                                             |
+| `didPrepareABTestUninstall`   | **Prepare for uninstall** is run                       | Number of experiments and variants removed, whether the variants were deleted or kept |
+
+Events only carry counts and flags: never an experiment name, key or hypothesis, a content type,
+a document id or a locale. Nothing is sent when variants are served, so the Content API path is
+unaffected.
+
 ## Limitations
 
 - Collection types only. Single types are not supported.
