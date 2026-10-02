@@ -146,6 +146,23 @@ const res = await fetch(`${STRAPI_URL}/api/articles/${id}?abSeed=${bucket}`);
 The plugin hashes the seed together with the experiment key, so the same bucket lands on
 independent sides of different experiments.
 
+### With an AI coding assistant
+
+**Settings → A/B Testing** has a **Copy prompt** button, under "Set up your frontend with an AI
+assistant". Paste the prompt into a coding assistant opened on the codebase of your frontend. It
+asks the assistant to:
+
+1. send `abSeed` on the read requests for the content types you enabled, with a seed that fits
+   how your pages are cached;
+2. audit what the frontend reports to analytics (PostHog, Amplitude, Google Analytics…):
+   exposures, conversions, visitor identity, caching and consent.
+
+The prompt is written from the state of your project: it lists the enabled content types with
+their routes, the success metrics of your current experiments, and whether PostHog is connected,
+in which case the event names of [Results from PostHog](#results-from-posthog-optional) are
+binding. It asks the assistant to show what it found and what it plans to change before editing.
+Review its changes like any other: Strapi cannot see the result.
+
 ## Measuring results
 
 The plugin serves and labels variants. It receives no event and counts no visitor: results are

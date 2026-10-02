@@ -6,6 +6,7 @@ import { Layouts, Page, useNotification } from '@strapi/strapi/admin';
 
 import { useContentTypes, useExperimentActions, usePosthogConnection } from '../api';
 import { DisposeDialog } from '../components/DisposeDialog';
+import { FrontendPrompt } from '../components/FrontendPrompt';
 import { HowItWorks } from '../components/HowItWorks';
 import { PosthogResults } from '../components/PosthogResults';
 import { PERMISSIONS } from '../constants';
@@ -129,6 +130,8 @@ const SettingsPage = () => {
             </Typography>
             <HowItWorks />
           </Flex>
+
+          <FrontendPrompt connection={posthog} />
 
           <Box background="neutral0" padding={6} hasRadius shadow="tableShadow">
             <Flex direction="column" alignItems="flex-start" gap={4}>

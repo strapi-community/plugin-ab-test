@@ -161,6 +161,11 @@ const main = async () => {
     const { data } = await admin('GET', '/ab-test/content-types');
     assert.equal(data.find((type) => type.uid === ARTICLE).enabled, true);
     assert.equal(data.find((type) => type.uid === PAGE).localized, false);
+
+    // What the frontend prompt builds routes and query names from.
+    const article = data.find((type) => type.uid === ARTICLE);
+    assert.equal(article.pluralName, 'articles');
+    assert.equal(article.singularName, 'article');
   });
 
   await check('plugin content types cannot be enabled', async () => {

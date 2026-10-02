@@ -80,6 +80,8 @@ export type ExperimentSummary = Pick<Experiment, 'documentId' | 'key' | 'name' |
 export interface ContentTypeInfo {
   uid: string;
   displayName: string;
+  singularName: string;
+  pluralName: string;
   localized: boolean;
   draftAndPublish: boolean;
   enabled: boolean;

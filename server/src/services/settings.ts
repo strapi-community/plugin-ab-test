@@ -16,6 +16,9 @@ const settings = ({ strapi }: { strapi: Core.Strapi }) => {
       .map((contentType) => ({
         uid: contentType.uid as string,
         displayName: contentType.info.displayName,
+        // The names its Content API routes and GraphQL queries are built from.
+        singularName: contentType.info.singularName,
+        pluralName: contentType.info.pluralName,
         localized: isLocalized(contentType),
         draftAndPublish: hasDraftAndPublish(contentType),
       }));
